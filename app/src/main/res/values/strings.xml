@@ -2,5 +2,11 @@
     <string name="app_name">Alarm SMS Commander</string>
     <string name="phone" >00000</string>
     <string name="passwd" >#1234#</string>
-    <string name="preference_AlarmSMSCommand">alarmsmscommandpreferences</string>
+    <string name="arm">Arm</string>
+    <string name="status">Status</string>
+    <string name="disarm">Disarm</string>
+    <string name="remember">Remember</string>
+    <string name="enter_alarm_number">Enter Alarm Number</string>
+    <string name="enter_alarm_password">Enter Alarm password</string>
+    <string name="call_alarm">Call Alarm</string>
 </resources>

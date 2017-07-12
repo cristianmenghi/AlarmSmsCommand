@@ -2,8 +2,10 @@ package com.lovelyfatbears.thoniorf.alarmsmscommander;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
@@ -17,6 +19,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -25,26 +28,28 @@ import static android.R.attr.defaultValue;
 public class MainActivity extends AppCompatActivity {
 
     private static final int MY_PERMISSIONS_REQUEST_SEND_SMS =0 ;
+    private static final int MY_PERMISSIONS_REQUEST_PHONE_CALL =1;
     private SmsManager smsmanager;
     private Button arm,disarm,status;
     private String[] codes = {"ARM","DISARM","CHECK"};
     private EditText phone,passwd;
     private String message;
     private CheckBox remember;
+    private ImageButton call;
     SharedPreferences sharedPref;
     SharedPreferences.Editor editor;
+    Intent callIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         smsmanager = SmsManager.getDefault();
+        callIntent = new Intent(Intent.ACTION_CALL);
         initWidget();
         initListener();
         readValues();
 
-    // Example of a call to a native method
-    // TextView tv = (TextView) findViewById(R.id.sample_text);
     }
 
     protected  void initWidget() {
@@ -54,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         phone = (EditText) findViewById(R.id.edittxt_phone);
         passwd = (EditText) findViewById(R.id.edittxt_passwd);
         remember = (CheckBox) findViewById(R.id.chb_remember);
+        call = (ImageButton) findViewById(R.id.imagebtn_call);
 
     }
 
@@ -62,7 +68,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if(isPhoneSetted() && isPasswdSetted()) {
-                    sendSMS(phone.getText().toString(), generateMessage(passwd.getText().toString(),codes[0]));
+                    generateMessage(codes[0]);
+                    askPermissionToSend();
                 }
             }
         });
@@ -70,7 +77,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if(isPhoneSetted() && isPasswdSetted()) {
-                    sendSMS(phone.getText().toString(), generateMessage(passwd.getText().toString(),codes[1]));
+                    generateMessage(codes[1]);
+                    askPermissionToSend();
                 }
             }
         });
@@ -78,15 +86,25 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if(isPhoneSetted() && isPasswdSetted()) {
-                    sendSMS(phone.getText().toString(), generateMessage(passwd.getText().toString(),codes[2]));
+                    generateMessage(codes[2]);
+                    askPermissionToSend();
                 }
             }
         });
         remember.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (remember.isChecked()) {
+                if (isPhoneSetted() && isPasswdSetted() && remember.isChecked()) {
                     storeValues();
+                }
+            }
+        });
+        call.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(isPhoneSetted()) {
+                    callIntent.setData(Uri.parse("tel:"+phone.getText().toString()));
+                    askPermissionToCall();
                 }
             }
         });
@@ -101,18 +119,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sendSMS(String phoneNumber, String message) {
-        askPermissionToSend();
+        smsmanager.sendTextMessage(phoneNumber, null, message, null, null);
+        Toast.makeText(getApplicationContext(), "SMS sent", Toast.LENGTH_LONG).show();
     }
 
-    private String generateMessage(String passwd,String code) {
-        message = passwd+code;
+    private String generateMessage(String code) {
+        message = passwd.getText().toString() +code;
         return message;
+    }
+
+    private void makeCall() {
+        startActivity(callIntent);
     }
 
     private  void askPermissionToSend() {
         // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this,
-                Manifest.permission.READ_CONTACTS)
+                Manifest.permission.SEND_SMS)
                 != PackageManager.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.SEND_SMS)) {
@@ -120,8 +143,25 @@ public class MainActivity extends AppCompatActivity {
                 ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.SEND_SMS},
                         MY_PERMISSIONS_REQUEST_SEND_SMS);
-
             }
+        } else {
+            sendSMS(phone.getText().toString(),message);
+        }
+    }
+    private  void askPermissionToCall() {
+        // Here, thisActivity is the current activity
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.CALL_PHONE)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.CALL_PHONE)) {
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.CALL_PHONE},
+                        MY_PERMISSIONS_REQUEST_PHONE_CALL);
+            }
+        } else {
+            makeCall();
         }
     }
 
@@ -132,21 +172,29 @@ public class MainActivity extends AppCompatActivity {
             case MY_PERMISSIONS_REQUEST_SEND_SMS: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    smsmanager.sendTextMessage(phone.getText().toString(), null, message, null, null);
-                    Toast.makeText(getApplicationContext(), "SMS sent.", Toast.LENGTH_LONG).show();
+                    sendSMS(phone.getText().toString(),message);
+
 
                 } else {
-                    Toast.makeText(getApplicationContext(), "SMS failed, try again.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getApplicationContext(), "SMS failed, try again", Toast.LENGTH_LONG).show();
 
                 }
                 return;
+            }
+            case MY_PERMISSIONS_REQUEST_PHONE_CALL: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    makeCall();
+                } else {
+                    Toast.makeText(getApplicationContext(), "Phone call permission denied", Toast.LENGTH_LONG).show();
+
+                }
             }
         }
     }
 
     protected void storeValues() {
         editor = sharedPref.edit();
-        editor.putString(getString(R.string.phone),phone.getText().toString()).putString(getString(R.string.passwd),passwd.getText().toString()).apply();
+        editor.putString(getString(R.string.phone), phone.getText().toString()).putString(getString(R.string.passwd), passwd.getText().toString()).apply();
     }
     protected  void readValues() {
         sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
@@ -158,15 +206,5 @@ public class MainActivity extends AppCompatActivity {
         if(!stored_passwd.equals("")) {
             passwd.setText(stored_passwd);
         }
-    }
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-    public native String stringFromJNI();
-
-    // Used to load the 'native-lib' library on application startup.
-    static {
-        System.loadLibrary("native-lib");
     }
 }
