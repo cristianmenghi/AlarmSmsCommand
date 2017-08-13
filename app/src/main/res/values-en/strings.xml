@@ -1,23 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Alarm SMS Commander</string>
-    <string name="phones" translatable="false">0</string>
-    <string name="names" translatable="false">1</string>
-    <string name="passwds" translatable="false">2</string>
     <string name="arm">Arm</string>
-    <string name="status">Status</string>
+    <string name="call_alarm">Call</string>
     <string name="disarm">Disarm</string>
-    <string name="remember">Remember</string>
     <string name="enter_alarm_number">Enter alarm number</string>
     <string name="enter_alarm_password">Enter alarm password</string>
-    <string name="call_alarm">Call</string>
+    <string name="remember">Remember</string>
+    <string name="status">Status</string>
     <string name="add_dialog_title">Add alarm</string>
     <string name="enter_alarm_name">Enter alarm name</string>
     <string name="add_dialog_cancel">Cancel</string>
     <string name="add_dialog_save">Save</string>
     <string name="send">Sms sent</string>
-    <string name="sms_permission_failed">Sms permission denied. Change permissions settings</string>
     <string name="call_permission_failed">Call permission denied. Change permissions settings</string>
+    <string name="sms_permission_failed">Sms permission denied. Change permissions settings</string>
     <string name="more">More options</string>
     <string name="delete">Delete</string>
-    <string name="credits" translatable="false">Made by Antonio Fortino</string>
 </resources>

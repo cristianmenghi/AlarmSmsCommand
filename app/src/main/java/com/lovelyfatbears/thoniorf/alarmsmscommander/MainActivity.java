@@ -1,139 +1,124 @@
 package com.lovelyfatbears.thoniorf.alarmsmscommander;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
+import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.util.ArraySet;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.telephony.SmsManager;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import static android.R.attr.defaultValue;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AddAlarmDialog.NoticeDialogListener {
 
-    private static final int MY_PERMISSIONS_REQUEST_SEND_SMS =0 ;
-    private static final int MY_PERMISSIONS_REQUEST_PHONE_CALL =1;
-    private SmsManager smsmanager;
-    private Button arm,disarm,status;
-    private String[] codes = {"ARM","DISARM","CHECK"};
-    private EditText phone,passwd;
-    private String message;
-    private CheckBox remember;
-    private ImageButton call;
+    private static final int MY_PERMISSIONS_REQUEST_SEND_SMS = 0;
+    private static final int MY_PERMISSIONS_REQUEST_PHONE_CALL = 1;
+    List<Alarm> alarms;
+    String prefName = "mysharedpref";
     SharedPreferences sharedPref;
     SharedPreferences.Editor editor;
     Intent callIntent;
+    RecyclerView recyView;
+    AlarmRecyclerAdapter recyAdapter;
+    private RecyclerView.LayoutManager recyLayManager;
+    private AddAlarmDialog addDialog;
+    private FloatingActionButton btn_fa_add;
+    private SmsManager smsmanager;
+
+    @Override
+    public void onDialogPositiveClick(AddAlarmDialog dialog) {
+        alarms.add(new Alarm(dialog.number.getText().toString(), dialog.password.getText().toString(),dialog.name.getText().toString()));
+        storeValues();
+        recyAdapter.notifyDataSetChanged();
+    }
+
+    @Override
+    public void onDialogNegativeClick(AddAlarmDialog dialog) {
+
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        smsmanager = SmsManager.getDefault();
-        callIntent = new Intent(Intent.ACTION_CALL);
-        initWidget();
-        initListener();
+        setContentView(R.layout.activity_list);
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.top_toolbar);
+        setSupportActionBar(toolbar);
+
+        recyView = (RecyclerView) findViewById(R.id.alarm_list);
+
+        recyLayManager = new LinearLayoutManager(this);
+        recyView.setLayoutManager(recyLayManager);
+
+        sharedPref = getSharedPreferences(prefName,MODE_PRIVATE);
+
+        alarms = new ArrayList<>();
         readValues();
 
+        recyAdapter = new AlarmRecyclerAdapter(alarms);
+        recyView.setAdapter(recyAdapter);
+
+        smsmanager = SmsManager.getDefault();
+        callIntent = new Intent(Intent.ACTION_CALL);
+
+        initWidget();
+        initListener();
     }
 
-    protected  void initWidget() {
-        arm = (Button) findViewById(R.id.btn_arm);
-        disarm = (Button) findViewById(R.id.btn_disarm);
-        status = (Button) findViewById(R.id.btn_status);
-        phone = (EditText) findViewById(R.id.edittxt_phone);
-        passwd = (EditText) findViewById(R.id.edittxt_passwd);
-        remember = (CheckBox) findViewById(R.id.chb_remember);
-        call = (ImageButton) findViewById(R.id.imagebtn_call);
+    @Override
+    protected void onPause() {
+        super.onPause();
+        storeValues();
+    }
 
+    protected void initWidget() {
+        btn_fa_add = (FloatingActionButton) findViewById(R.id.btn_fa_add);
     }
 
     protected void initListener() {
-        arm.setOnClickListener(new View.OnClickListener() {
+        btn_fa_add.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(isPhoneSetted() && isPasswdSetted()) {
-                    generateMessage(codes[0]);
-                    askPermissionToSend();
-                }
+                addDialog = new AddAlarmDialog();
+                addDialog.show(getSupportFragmentManager(), "add_alarm");
             }
         });
-        disarm.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(isPhoneSetted() && isPasswdSetted()) {
-                    generateMessage(codes[1]);
-                    askPermissionToSend();
-                }
-            }
-        });
-        status.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(isPhoneSetted() && isPasswdSetted()) {
-                    generateMessage(codes[2]);
-                    askPermissionToSend();
-                }
-            }
-        });
-        remember.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isPhoneSetted() && isPasswdSetted() && remember.isChecked()) {
-                    storeValues();
-                }
-            }
-        });
-        call.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(isPhoneSetted()) {
-                    callIntent.setData(Uri.parse("tel:"+phone.getText().toString()));
-                    askPermissionToCall();
-                }
-            }
-        });
-    }
-
-    protected boolean isPhoneSetted() {
-        return phone.getText().length() != 0;
-    }
-
-    protected boolean isPasswdSetted() {
-        return  passwd.getText().length() != 0;
     }
 
     private void sendSMS(String phoneNumber, String message) {
         smsmanager.sendTextMessage(phoneNumber, null, message, null, null);
-        Toast.makeText(getApplicationContext(), "SMS sent", Toast.LENGTH_LONG).show();
+        Toast.makeText(getApplicationContext(), getString(R.string.send), Toast.LENGTH_LONG).show();
     }
 
-    private String generateMessage(String code) {
-        message = passwd.getText().toString() +code;
-        return message;
-    }
 
-    private void makeCall() {
+    private void makeCall(String phone) {
+        callIntent.setData(Uri.parse("tel:" + phone));
         startActivity(callIntent);
     }
 
-    private  void askPermissionToSend() {
-        // Here, thisActivity is the current activity
+    protected void trySend(String phone,String passwd, String code) {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.SEND_SMS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -144,12 +129,15 @@ public class MainActivity extends AppCompatActivity {
                         new String[]{Manifest.permission.SEND_SMS},
                         MY_PERMISSIONS_REQUEST_SEND_SMS);
             }
-        } else {
-            sendSMS(phone.getText().toString(),message);
         }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
+                == PackageManager.PERMISSION_GRANTED) {
+            sendSMS(phone, passwd+code);
+        }
+
     }
-    private  void askPermissionToCall() {
-        // Here, thisActivity is the current activity
+
+    protected void tryCall(String phone) {
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.CALL_PHONE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -160,33 +148,29 @@ public class MainActivity extends AppCompatActivity {
                         new String[]{Manifest.permission.CALL_PHONE},
                         MY_PERMISSIONS_REQUEST_PHONE_CALL);
             }
-        } else {
-            makeCall();
         }
+        if(ContextCompat.checkSelfPermission(this,
+                Manifest.permission.CALL_PHONE)
+                == PackageManager.PERMISSION_GRANTED) {
+            makeCall(phone);
+        }
+
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_SEND_SMS: {
                 // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    sendSMS(phone.getText().toString(),message);
-
-
-                } else {
-                    Toast.makeText(getApplicationContext(), "SMS failed, try again", Toast.LENGTH_LONG).show();
-
+                if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(getApplicationContext(), getString(R.string.sms_permission_failed), Toast.LENGTH_LONG).show();
                 }
                 return;
             }
             case MY_PERMISSIONS_REQUEST_PHONE_CALL: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    makeCall();
-                } else {
-                    Toast.makeText(getApplicationContext(), "Phone call permission denied", Toast.LENGTH_LONG).show();
-
+                if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(getApplicationContext(), getString(R.string.call_permission_failed), Toast.LENGTH_LONG).show();
                 }
             }
         }
@@ -194,17 +178,37 @@ public class MainActivity extends AppCompatActivity {
 
     protected void storeValues() {
         editor = sharedPref.edit();
-        editor.putString(getString(R.string.phone), phone.getText().toString()).putString(getString(R.string.passwd), passwd.getText().toString()).apply();
-    }
-    protected  void readValues() {
-        sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        String stored_phone = sharedPref.getString(getString(R.string.phone),"");
-        String stored_passwd = sharedPref.getString(getString(R.string.passwd),"");
-        if(!stored_phone.equals("")) {
-            phone.setText(stored_phone);
+        Set<String> phones = new ArraySet<>();
+        for (int i = 0; i < alarms.size(); i++) {
+            phones.add(alarms.get(i).number);
         }
-        if(!stored_passwd.equals("")) {
-            passwd.setText(stored_passwd);
+        Set<String> names = new ArraySet<>();
+        for (int i = 0; i < alarms.size(); i++) {
+            names.add(alarms.get(i).name);
+        }
+        Set<String> passwds = new ArraySet<>();
+        for (int i = 0; i < alarms.size(); i++) {
+            passwds.add(alarms.get(i).password);
+        }
+
+        editor.putStringSet(getString(R.string.phones),phones);
+        editor.putStringSet(getString(R.string.names),names);
+        editor.putStringSet(getString(R.string.passwds),passwds);
+        editor.apply();
+    }
+
+    protected void readValues() {
+        Set<String> phones = new ArraySet<>(sharedPref.getStringSet(getString(R.string.phones),null));
+        Set<String> names = new ArraySet<>(sharedPref.getStringSet(getString(R.string.names),null));
+        Set<String> passwds = new ArraySet<>(sharedPref.getStringSet(getString(R.string.passwds),null));
+        String phones_array[] =  Arrays.copyOf(phones.toArray(),phones.size(),String[].class);
+        String names_array[] = Arrays.copyOf(names.toArray(),names.size(),String[].class);
+        String passwds_array[] = Arrays.copyOf(passwds.toArray(),passwds.size(),String[].class);
+
+        if(phones.size() == names.size() && names.size() == passwds.size()) {
+            for(int i = 0; i < phones.size(); i ++){
+                alarms.add(new Alarm(phones_array[i],passwds_array[i],names_array[i]));
+            }
         }
     }
 }

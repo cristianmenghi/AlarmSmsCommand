@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Alarm SMS Commander</string>
+    <string name="arm">Arma</string>
+    <string name="call_alarm">Chiama</string>
+    <string name="disarm">Disarma</string>
+    <string name="enter_alarm_number">Inserici numero allarme</string>
+    <string name="enter_alarm_password">Inserisci password allarme</string>
+    <string name="remember">Ricorda</string>
+    <string name="status">Stato</string>
+    <string name="add_dialog_title">Aggiungi allarme</string>
+    <string name="enter_alarm_name">Inserisci nome allarme</string>
+    <string name="add_dialog_cancel">Annulla</string>
+    <string name="add_dialog_save">Salva</string>
+    <string name="send">Sms inviato</string>
+    <string name="call_permission_failed">Permessi \"Chiamate\" negati. Cambia le impostazioni</string>
+    <string name="sms_permission_failed">Permessi \"Sms\" negati. Cambia le impostazioni</string>
+    <string name="more">Altre opzioni</string>
+    <string name="delete">Delete</string>
+</resources>
